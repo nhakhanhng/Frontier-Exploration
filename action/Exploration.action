@@ -1,0 +1,9 @@
+# Goal (Mục tiêu)
+# Để trống nếu không cần tham số khi khởi động
+---
+# Result (Kết quả)
+bool complete  # Cho biết khám phá đã hoàn thành hay chưa
+---
+# Feedback (Phản hồi)
+string status  # Trạng thái hiện tại, ví dụ: "đang khám phá", "đã dừng"
+# float32 progress  # Tiến trình khám phá (nếu có), từ 0.0 đến 1.0

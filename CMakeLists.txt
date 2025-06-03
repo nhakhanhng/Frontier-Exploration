@@ -16,8 +16,18 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   sensor_msgs
   pcl_ros
+  rospy
 )
 
+
+add_action_files(
+  DIRECTORY action
+  FILES Exploration.action
+)
+
+generate_messages(
+  DEPENDENCIES actionlib_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -36,6 +46,7 @@ catkin_package(
     tf
     visualization_msgs
     sensor_msgs
+    rospy
 )
 
 ###########
@@ -53,20 +64,45 @@ include_directories(
 
 include_directories(PCL_CONVERSIONS_INCLUDE_DIRS)
 
-add_executable(explore_new
+# add_executable(explore_new
+#   src/costmap_client.cpp
+#   src/explore.cpp
+#   src/frontier_search.cpp
+# )
+
+add_executable(explore_action_server 
+  src/explore_action_server.cpp
   src/costmap_client.cpp
   src/explore.cpp
   src/frontier_search.cpp
 )
-add_dependencies(explore_new ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(explore_new ${catkin_LIBRARIES})
+
+add_executable(explore_action_client 
+  src/explore_action_client.cpp
+  src/costmap_client.cpp
+  src/explore.cpp
+  src/frontier_search.cpp
+)
+
+# add_dependencies(explore_new ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(explore_action_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(explore_action_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+
+# target_link_libraries(explore_new ${catkin_LIBRARIES})
+target_link_libraries(explore_action_server ${catkin_LIBRARIES})
+target_link_libraries(explore_action_client ${catkin_LIBRARIES})
+
 
 #############
 ## Install ##
 #############
 
+# catkin_install_python(PROGRAMS node/explore_action_client
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
 # install nodes
-install(TARGETS explore_new
+install(TARGETS  explore_action_server explore_action_client
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

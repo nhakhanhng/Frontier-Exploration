@@ -17,8 +17,21 @@
 #include <vector> // for vector  
 #include <algorithm> // for copy() and assign()  
 #include <iterator> // for back_inserter  
+#include <cmath>
 
 
+double angleCalc(float Ax,float Ay) {
+    return std::atan2(Ax,Ay);
+}
+
+double calculateAngleDeviation(double A1, double A2) {
+  double angle_between = std::fabs(A2 - A1);
+
+    // Đảm bảo góc nằm trong khoảng [0, π]
+  if (angle_between > M_PI) {
+      angle_between = 2 * M_PI - angle_between;
+  }
+}
 
 namespace frontier_exploration
 {
@@ -27,11 +40,12 @@ namespace frontier_exploration
   using costmap_2d::FREE_SPACE;
 
   FrontierSearch::FrontierSearch(costmap_2d::Costmap2D* costmap,
-                                double potential_scale, double gain_scale,
+                                double potential_scale, double gain_scale,double orientation_scale,
                                 double min_frontier_size)
     : costmap_(costmap)
     , potential_scale_(potential_scale)
     , gain_scale_(gain_scale)
+    , orientation_scale_(orientation_scale)
     , min_frontier_size_(min_frontier_size)
   {
   }
@@ -58,7 +72,7 @@ namespace frontier_exploration
   }
 
   FrontierSearch::FrontierSearch(costmap_2d::Costmap2D* costmap,ros::NodeHandle& subscription_nh, double potential_scale,
-  double gain_scale, double min_frontier_size)
+  double gain_scale, double orientation_scale, double min_frontier_size)
         : costmap_(costmap)
         , potential_scale_(potential_scale)
         , gain_scale_(gain_scale)
@@ -120,9 +134,9 @@ namespace frontier_exploration
                   // std::vector<geometry_msgs::Point32> Endpoints;
               RayEndpoints_.clear();
               geometry_msgs::Point32 LazerPoint;
-              geometry_msgs::Point32 testPoint;
-                testPoint.x = 1.0; testPoint.y = 2.0; testPoint.z = 3.0;
-                RayEndpoints_.push_back(testPoint);
+              // geometry_msgs::Point32 testPoint;
+                // testPoint.x = 1.0; testPoint.y = 2.0; testPoint.z = 3.0;
+                // RayEndpoints_.push_back(testPoint);
               // LazerPoint.x = 1.2;
               //     LazerPoint.y = 2.6;
               //     LazerPoint.z = 3.0;
@@ -130,9 +144,10 @@ namespace frontier_exploration
               //     RayEndpoints_.push_back(LazerPoint);
               pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
               pcl::fromROSMsg(*msg, pcl_cloud);
+              RayEndpoints_.reserve(pcl_cloud.points.size());
               // // Extract x, y, and z values
                   // printf("%ld\r\n",RayEndpoints_.max_size());
-                  printf("Callback: %p\r\n",&RayEndpoints_);
+                  // printf("Callback: %p\r\n",&RayEndpoints_);
                     // ROS_DEBUG("Callback: Vector Address: %p, Size before push_back: %lu", &RayEndpoints_, RayEndpoints_.size());
               for (auto point : pcl_cloud.points) {
                   LazerPoint.x = point.x;
@@ -185,7 +200,8 @@ namespace frontier_exploration
       bfs.pop();
 
       // iterate over 4-connected neighbourhood
-      for (unsigned nbr : nhood4(idx, *costmap_)) {
+      std::vector<unsigned int> nbrs = nhood4(idx, *costmap_);
+      for (unsigned nbr : nbrs) {
         // add to queue all free, unvisited cells, use descending search in case
         // initialized on non-free cell
         if (map_[nbr] <= map_[idx] && !visited_flag[nbr]) {
@@ -216,14 +232,16 @@ namespace frontier_exploration
 
   bool FrontierSearch::CanBeFrontier(unsigned int pos) {
     if (map_[pos] == FREE_SPACE) {
-        for (unsigned int nbr : nhood4(pos, *costmap_)) {
+      std::vector<unsigned int> nbrs = nhood4(pos, *costmap_);
+        for (unsigned int nbr : nbrs) {
         if (map_[nbr] == FREE_SPACE) {
           return false;
       }
     }
   }
   if (map_[pos] == NO_INFORMATION) {
-        for (unsigned int nbr : nhood4(pos, *costmap_)) {
+    std::vector<unsigned int> nbrs = nhood4(pos, *costmap_);
+        for (unsigned int nbr : nbrs) {
         if (map_[nbr] == NO_INFORMATION) {
           return false;
       }
@@ -237,7 +255,7 @@ namespace frontier_exploration
     // make sure map is consistent and locked for duration of search
     // printf("Search: %p\r\n",&RayEndpoints_);
     std::lock_guard<costmap_2d::Costmap2D::mutex_t> lock(*(costmap_->getMutex()));
-
+    printf("Search\r\n");
     map_ = costmap_->getCharMap();
     size_x_ = costmap_->getSizeInCellsX();
     size_y_ = costmap_->getSizeInCellsY();
@@ -248,18 +266,22 @@ namespace frontier_exploration
     std::vector<unsigned int> frontier_idxs;
     // initialize breadth first search
     std::queue<unsigned int> bfs;
-    // printf("Start\r\n");
+    printf("Start\r\n");
     unsigned int mx, my;
       if (!costmap_->worldToMap(position.x, position.y, mx, my)) {
         ROS_ERROR("Robot out of costmap bounds, cannot search for frontiers");
         // return frontier_list;
-        frontier_list.clear();
+        // frontier_list.clear();
+        return;
       }  
       unsigned int current_pos = costmap_->getIndex(mx, my);
 
+        printf("Old Frontier\r\n");
       for (auto old_frontier : frontier_list) {
         for (auto points : old_frontier.points) {
-          costmap_->worldToMap(points.x, points.y, mx, my);
+          if (!costmap_->worldToMap(points.x, points.y, mx, my)) {
+            continue;
+          }
           unsigned int pos = costmap_->getIndex(mx, my);
           if (!visited_flag[pos]) {
             bfs.push(pos);
@@ -268,8 +290,11 @@ namespace frontier_exploration
 
         }
       }
+      printf("Ray Endpoints\r\n");
       for (auto points : RayEndpoints_) {
-          costmap_->worldToMap(points.x, points.y, mx, my);
+          if (!costmap_->worldToMap(points.x, points.y, mx, my)){
+            continue;
+          }
           unsigned int pos = costmap_->getIndex(mx, my);
           if (!visited_flag[pos]) {
             bfs.push(pos);
@@ -277,6 +302,7 @@ namespace frontier_exploration
           }
       }
       frontier_list.clear();
+      printf("Start BFS\r\n");
       while (!bfs.empty()) {
         unsigned int idx = bfs.front();
         bfs.pop();
@@ -287,7 +313,8 @@ namespace frontier_exploration
           frontier_idxs.push_back(idx);
         }
         if (frontier_flag[idx] || CanBeFrontier(idx)) {
-            for (auto nbr : nhood8(idx,*costmap_)) {
+          std::vector<unsigned int> nbrs = nhood8(idx, *costmap_);
+            for (auto nbr : nbrs) {
               if (!visited_flag[nbr] && map_[idx] == costmap_2d::NO_INFORMATION) {
                 visited_flag[nbr] = true;
                 bfs.push(nbr);
@@ -295,20 +322,23 @@ namespace frontier_exploration
             }
         }
       }
-      // printf("Point idx: %d\r\n",frontier_idxs.size());
+      printf("Frontier Point idx: %d\r\n",frontier_idxs.size());
       frontier_list = buildNewFrontierwithKoraraju(current_pos,frontier_flag,frontier_idxs);
       // set costs of frontiers
+      printf("Frontier Point: %d\r\n",frontier_list.size());
       for (auto& frontier : frontier_list) {
         frontier.cost = frontierCost(frontier);
       }
       std::sort(
           frontier_list.begin(), frontier_list.end(),
           [](const Frontier& f1, const Frontier& f2) { return f1.cost < f2.cost; });
+      printf("After Sort\r\n");
   }
 
-  std::vector<Frontier>  FrontierSearch::buildNewFrontierwithKoraraju( unsigned int reference,std::vector<bool> frontier_flag,
+  std::vector<Frontier> FrontierSearch::buildNewFrontierwithKoraraju( unsigned int reference,std::vector<bool> frontier_flag,
                                                             std::vector<unsigned int> frontier_idxs) {
         std::vector<Frontier> Frontier_list;
+        Frontier_list.reserve(5);
         std::vector<bool> visited_flag(size_x_ * size_y_, false);
         std::stack<unsigned int>dfs;
         // cache reference position in world coords
@@ -316,6 +346,7 @@ namespace frontier_exploration
         double reference_x, reference_y;
         costmap_->indexToCells(reference, rx, ry);
         costmap_->mapToWorld(rx, ry, reference_x, reference_y);
+        printf("Buiding Frontier\r\n");
       for (auto idx : frontier_idxs) {
         if (!visited_flag[idx]) {
             visited_flag[idx] = true;
@@ -354,7 +385,8 @@ namespace frontier_exploration
               // printf("DFS empty\r\n");
               unsigned int pos = dfs.top();
               dfs.pop();
-              for (auto nbr : nhood8(pos,*costmap_)) {
+              std::vector<unsigned int> nbrs = nhood8(pos, *costmap_);
+              for (auto nbr : nbrs) {
                 if (frontier_flag[nbr] && !visited_flag[nbr]) {
                 // printf("neighboor\r\n");
                   costmap_->indexToCells(nbr, mx, my);
@@ -381,6 +413,9 @@ namespace frontier_exploration
                     frontier.middle.x = wx;
                     frontier.middle.y = wy;
                   }
+                  double xAngleCentroid = angleCalc(frontier.centroid.y,frontier.centroid.x);
+                  double xAngleRobot = angleCalc(reference_y,reference_x);
+                  frontier.AngleCentroid = calculateAngleDeviation(xAngleCentroid,xAngleRobot);
                   dfs.push(nbr);
                   visited_flag[nbr] = true;
                 }
@@ -390,12 +425,14 @@ namespace frontier_exploration
             // printf("Size: %d\r\n",frontier.size);
             frontier.centroid.x /= frontier.size;
             frontier.centroid.y /= frontier.size;
-            if (frontier.size > 3) {
+            if (frontier.size > 10) {
 
             Frontier_list.push_back(frontier);
             }
+
         }
       }
+      printf("after build\r\n");
     return Frontier_list;
   }
 
@@ -430,7 +467,8 @@ namespace frontier_exploration
       bfs.pop();
 
       // try adding cells in 8-connected neighborhood to frontier
-      for (unsigned int nbr : nhood8(idx, *costmap_)) {
+      std::vector<unsigned int> nbrs = nhood8(idx, *costmap_);
+      for (unsigned int nbr : nbrs) {
         // check if neighbour is a potential frontier cell
         if (isNewFrontierCell(nbr, frontier_flag)) {
           // mark cell as frontier
@@ -484,7 +522,8 @@ namespace frontier_exploration
 
     // frontier cells should have at least one cell in 4-connected neighbourhood
     // that is free
-    for (unsigned int nbr : nhood4(idx, *costmap_)) {
+  std::vector<unsigned int> nbrs = nhood4(idx, *costmap_);
+    for (unsigned int nbr : nbrs) {
       // if (map_[nbr] == LETHAL_OBSTACLE ) return false;
       if (map_[nbr] == FREE_SPACE) {
         return true;
@@ -496,8 +535,9 @@ namespace frontier_exploration
 
   double FrontierSearch::frontierCost(const Frontier& frontier)
   {
+    // angle = ca
     return (potential_scale_ * frontier.min_distance *
-            costmap_->getResolution()) -
+            costmap_->getResolution() + orientation_scale_ * frontier.AngleCentroid * costmap_->getResolution()) -
           (gain_scale_ * frontier.size * costmap_->getResolution());
   }
 }

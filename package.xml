@@ -30,6 +30,9 @@
   <depend>tf</depend>
   <depend>costmap_2d</depend>
   <depend>actionlib</depend>
+  <depend>rospy</depend>
+  <!-- <build_depend>actionlib_msgs</build_depend> -->
+  <!-- <exec_depend>actionlib_msgs</exec_depend> -->
 
   <test_depend>roslaunch</test_depend>
 </package>

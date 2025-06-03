@@ -19,7 +19,10 @@ std::vector<unsigned int> nhood4(unsigned int idx,
                                  const costmap_2d::Costmap2D& costmap)
 {
   // get 4-connected neighbourhood indexes, check for edge of map
-  std::vector<unsigned int> out;
+  // printf("Nhood4\r\n");
+  std::vector<unsigned int> out ;
+  // out.push_back(idx);
+  out.reserve(4);
 
   unsigned int size_x_ = costmap.getSizeInCellsX(),
                size_y_ = costmap.getSizeInCellsY();
@@ -55,8 +58,11 @@ std::vector<unsigned int> nhood8(unsigned int idx,
                                  const costmap_2d::Costmap2D& costmap)
 {
   // get 8-connected neighbourhood indexes, check for edge of map
+  // printf("Nhood8\r\n");
   std::vector<unsigned int> out = nhood4(idx, costmap);
-
+  if (out.size() == 0) {
+    return out;
+  }
   unsigned int size_x_ = costmap.getSizeInCellsX(),
                size_y_ = costmap.getSizeInCellsY();
 
@@ -121,11 +127,15 @@ bool nearestCell(unsigned int& result, unsigned int start, unsigned char val,
     }
     
     // iterate over all adjacent unvisited cells
-    for (unsigned nbr : nhood8(idx, costmap)) {
-      if (!visited_flag[nbr]) {
-        bfs.push(nbr);
-        visited_flag[nbr] = true;
-      }
+    std::vector<unsigned int> neighbor =  nhood8(idx, costmap);
+    // if (neighbor.length() >= 0)
+    // {
+      for (unsigned nbr : neighbor) {
+        if (!visited_flag[nbr]) {
+          bfs.push(nbr);
+          visited_flag[nbr] = true;
+        }
+      // }
     }
   }
 

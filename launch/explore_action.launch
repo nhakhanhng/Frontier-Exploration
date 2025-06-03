@@ -1,6 +1,6 @@
 <launch>
-<node pkg="new_explore" type="explore_new" respawn="false" name="explore" output="screen">
-  <param name="robot_base_frame" value="base_link"/>
+<node pkg="new_explore" type="explore_action_server" respawn="false" name="explore_action_server" output="screen">
+  <param name="robot_base_frame" value="base_footprint"/>
   <param name="costmap_topic" value="map"/>
   <param name="costmap_updates_topic" value="map_updates"/>
   <param name="visualize" value="true"/>

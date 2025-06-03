@@ -27,6 +27,7 @@ struct Frontier {
   geometry_msgs::Point initial;
   geometry_msgs::Point centroid;
   geometry_msgs::Point middle;
+  double AngleCentroid;
   std::vector<geometry_msgs::Point> points;
 };
 
@@ -46,14 +47,14 @@ public:
    * @param costmap Reference to costmap data to search.
    */
   FrontierSearch(costmap_2d::Costmap2D* costmap, double potential_scale,
-                 double gain_scale, double min_frontier_size);
+                 double gain_scale, double orientation_scale, double min_frontier_size);
 
   /**
    * @brief Constructor for search task
    * @param costmap Reference to costmap data to search.
    */
   FrontierSearch(costmap_2d::Costmap2D* costmap,ros::NodeHandle& subscription_nh, double potential_scale,
-                 double gain_scale, double min_frontier_size);
+                 double gain_scale, double orientation_scale, double min_frontier_size);
 
   /**
    * @brief Runs search implementation, outward from the start position
@@ -124,7 +125,7 @@ private:
   costmap_2d::Costmap2D* costmap_;
   unsigned char* map_;
   unsigned int size_x_, size_y_;
-  double potential_scale_, gain_scale_;
+  double potential_scale_, gain_scale_,orientation_scale_;
   double min_frontier_size_;
   ros::Subscriber scan_points_sub_;
   std::vector<uint8_t> pcl_data_;

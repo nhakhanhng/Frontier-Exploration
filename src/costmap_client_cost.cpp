@@ -137,19 +137,8 @@ void Costmap2DClient::updateFullMap(const nav_msgs::OccupancyGrid::ConstPtr& msg
   ROS_DEBUG("full map update, %lu values", costmap_size);
   for (size_t i = 0; i < costmap_size && i < msg->data.size(); ++i) {
     unsigned char cell_cost = static_cast<unsigned char>(msg->data[i]);
-    if (cell_cost>=0 &&cell_cost < 40) cell_cost = 0;
-    else if (cell_cost > 70 && cell_cost < 100) cell_cost = 100;
-    else cell_cost = -1;
     costmap_data[i] = cost_translation_table__[cell_cost];
-    // printf("%d ",costmap_data[i]);
-    // printf("cost_data: %d \r\n",costmap_data[i]);
-    // if (cell_cost == 0) printf("Free\r\n");
-    // if (cell_cost == 255) printf("Unknown\r\n");
-    // costmap_data[i] = static_cast<unsigned char>(msg->data[i]);
-    // if (costmap_data[i] < (unsigned char)255) printf("Map: %u\r\n",costmap_data[i] );
   }
-  // printf("cost_translation_table__: %d \r\n",cost_translation_table__[(unsigned char)-1]);
-  // printf("\r\n");
   ROS_DEBUG("map updated, written %lu values", costmap_size);
 }
 
@@ -193,7 +182,6 @@ void Costmap2DClient::updatePartialMap(
       size_t idx = costmap_.getIndex(x, y);
       unsigned char cell_cost = static_cast<unsigned char>(msg->data[i]);
       costmap_data[idx] = cost_translation_table__[cell_cost];
-      // costmap_data[idx] = static_cast<unsigned char>(msg->data[i]);
       ++i;
     }
   }
@@ -257,11 +245,7 @@ std::array<unsigned char, 256> init_translation_table()
   cost_translation_table[99] = 253;   // INSCRIBED obstacle
   cost_translation_table[100] = 254;  // LETHAL obstacle
   cost_translation_table[static_cast<unsigned char>(-1)] = 255;  // UNKNOWN
-  // printf("cost translation \r\n");
-  // for (int i = 0; i < 256;i++) {
-  //   printf("%d: %d\r\n",i,cost_translation_table[i]);
-  // }
-  // printf("\r\n");
+
   return cost_translation_table;
 }
 

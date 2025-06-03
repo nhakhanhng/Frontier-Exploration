@@ -67,12 +67,15 @@ public:
 
   void start();
   void stop();
+  bool isExploreCompleted();
 
 private:
   /**
    * @brief  Make a global plan
    */
   void makePlan();
+
+  void filterFrontiers();
 
   /**
    * @brief  Publish a frontiers as markers
@@ -85,6 +88,9 @@ private:
                    const geometry_msgs::Point& frontier_goal);
 
   bool goalOnBlacklist(const geometry_msgs::Point& goal);
+
+  bool isOldGoal(const geometry_msgs::Point& new_goal,const geometry_msgs::Point& prev_goal);
+
 
   ros::NodeHandle private_nh_;
   ros::NodeHandle relative_nh_;
@@ -101,13 +107,17 @@ private:
   std::vector<geometry_msgs::Point> frontier_blacklist_;
   geometry_msgs::Point prev_goal_;
   double prev_distance_;
-  ros::Time last_progress_;
+  double last_progress_;
   size_t last_markers_count_;
+  geometry_msgs::Point start_position_;
+  
 
+  bool is_explore_completed_ = false;
   // parameters
   double planner_frequency_;
+  // double filter_frontier_frequency_
   double potential_scale_, orientation_scale_, gain_scale_;
-  ros::Duration progress_timeout_;
+  double progress_timeout_;
   bool visualize_;
   std::vector<frontier_exploration::Frontier> frontiers;
   ros::Subscriber scan_points_sub_;
